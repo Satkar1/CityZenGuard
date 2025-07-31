@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Police Dashboard | AI Legal Assistance</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/police.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <i class="material-icons">gavel</i>
+                <span>AI Legal Assistance</span>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="home.html"><i class="material-icons">home</i> Home</a></li>
+                    <li><a href="#" id="logoutBtn"><i class="material-icons">logout</i> Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="dashboard">
+            <div class="sidebar">
+                <h3 class="sidebar-title">Police Dashboard</h3>
+                <button class="sidebar-btn active">Draft New FIR</button>
+                <button class="sidebar-btn">View Pending FIRs</button>
+                <button class="sidebar-btn">Case Updates</button>
+                <button class="sidebar-btn">Legal Resources</button>
+            </div>
+            
+            <div class="main-content">
+                <div class="fir-container">
+                    <div class="fir-title">
+                        <i class="material-icons">gavel</i>
+                        <span>FIR Drafting Assistant</span>
+                    </div>
+                    
+                    <div class="stepper">
+                        <div class="step active" id="step1">
+                            <div class="step-number">1</div>
+                            <div class="step-label">Incident Details</div>
+                        </div>
+                        <div class="step" id="step2">
+                            <div class="step-number">2</div>
+                            <div class="step-label">Victim Information</div>
+                        </div>
+                        <div class="step" id="step3">
+                            <div class="step-number">3</div>
+                            <div class="step-label">Legal Sections</div>
+                        </div>
+                        <div class="step" id="step4">
+                            <div class="step-number">4</div>
+                            <div class="step-label">Review & Submit</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 1: Incident Details -->
+                    <div class="form-step active" id="formStep1">
+                        <h3>Incident Details</h3>
+                        
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="incidentType">Incident Type</label>
+                                    <select id="incidentType">
+                                        <option value="">Select incident type</option>
+                                        <option value="theft">Theft</option>
+                                        <option value="assault">Assault</option>
+                                        <option value="fraud">Fraud</option>
+                                        <option value="cybercrime">Cybercrime</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="location">Location</label>
+                                    <input type="text" id="location">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="incidentDate">Date</label>
+                                    <input type="date" id="incidentDate">
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="incidentTime">Time</label>
+                                    <input type="time" id="incidentTime">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="incidentDescription">Incident Description</label>
+                            <textarea id="incidentDescription" rows="4"></textarea>
+                        </div>
+                        
+                        <div class="step-actions">
+                            <button class="step-btn outline" disabled>Back</button>
+                            <button class="step-btn" id="nextStep1">Next</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 2: Victim Information -->
+                    <div class="form-step" id="formStep2">
+                        <h3>Victim Information</h3>
+                        
+                        <div class="form-row">
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="victimName">Victim Name</label>
+                                    <input type="text" id="victimName">
+                                </div>
+                            </div>
+                            <div class="form-col">
+                                <div class="form-group">
+                                    <label for="victimContact">Contact Number</label>
+                                    <input type="tel" id="victimContact">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="victimAddress">Address</label>
+                            <textarea id="victimAddress" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="step-actions">
+                            <button class="step-btn outline" id="prevStep2">Back</button>
+                            <button class="step-btn" id="nextStep2">Next</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 3: Legal Sections -->
+                    <div class="form-step" id="formStep3">
+                        <h3>AI-Suggested Legal Sections</h3>
+                        <p>Based on the incident description, our AI system recommends the following applicable legal sections:</p>
+                        
+                        <div class="sections-container" id="sectionsContainer">
+                            <!-- Sections will be added dynamically -->
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="additionalComments">Additional Comments</label>
+                            <textarea id="additionalComments" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="step-actions">
+                            <button class="step-btn outline" id="prevStep3">Back</button>
+                            <button class="step-btn" id="nextStep3">Review FIR</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Step 4: Review & Submit -->
+                    <div class="form-step" id="formStep4">
+                        <h3>Review FIR Details</h3>
+                        
+                        <div class="review-section">
+                            <h4>Incident Details</h4>
+                            <p><strong>Type:</strong> <span id="reviewIncidentType"></span></p>
+                            <p><strong>Date:</strong> <span id="reviewIncidentDate"></span></p>
+                            <p><strong>Time:</strong> <span id="reviewIncidentTime"></span></p>
+                            <p><strong>Location:</strong> <span id="reviewLocation"></span></p>
+                            <p><strong>Description:</strong> <span id="reviewIncidentDescription"></span></p>
+                        </div>
+                        
+                        <div class="review-section">
+                            <h4>Victim Information</h4>
+                            <p><strong>Name:</strong> <span id="reviewVictimName"></span></p>
+                            <p><strong>Contact:</strong> <span id="reviewVictimContact"></span></p>
+                            <p><strong>Address:</strong> <span id="reviewVictimAddress"></span></p>
+                        </div>
+                        
+                        <div class="review-section">
+                            <h4>Legal Sections</h4>
+                            <div id="reviewSections"></div>
+                        </div>
+                        
+                        <div class="step-actions">
+                            <button class="step-btn outline" id="prevStep4">Back</button>
+                            <button class="step-btn" id="submitFIR">Submit FIR</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Completion Step -->
+                    <div class="form-step" id="formStep5">
+                        <div class="completion-step">
+                            <i class="material-icons">check_circle</i>
+                            <h3>FIR Successfully Drafted!</h3>
+                            <p>Your FIR has been submitted to the system. You can view or print it from the dashboard.</p>
+                            <button class="step-btn" id="resetForm">Draft Another FIR</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 AI Legal Assistance System. Developed as part of Bachelor of Technology in Computer Engineering.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script src="js/fir-drafting.js"></script>
+</body>
+</html>

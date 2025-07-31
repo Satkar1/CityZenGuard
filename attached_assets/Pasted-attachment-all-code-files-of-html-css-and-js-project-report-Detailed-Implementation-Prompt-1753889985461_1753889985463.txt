@@ -1,0 +1,219 @@
+attachment all code files of html css and js 
+project report 
+
+
+
+Detailed Implementation Prompt for AI-Powered Legal Assistance System
+
+I need a complete implementation of an AI-Powered Legal Assistance and Judicial Information System as described in the project report (PID_12_45.pdf). The system should include all modules with proper integration between frontend and backend. Use the following detailed specifications:
+
+1. System Architecture Requirements:
+Implement a 3-tier architecture (presentation, application, data)
+
+Use microservices for different modules (chatbot, FIR drafting, case tracking)
+
+Containerize using Docker for easy deployment
+
+Implement proper logging and monitoring
+
+2. Core Modules to Implement:
+A. AI Legal Chatbot Module:
+Multilingual support (English, Hindi, Marathi)
+
+NLP processing using transformer models
+
+Predefined legal intents:
+
+Case status inquiries
+
+FIR filing assistance
+
+Court hearing information
+
+Legal procedure explanations
+
+Fine payment guidance
+
+Contextual conversation handling
+
+Integration with NJDG API for real data
+
+B. FIR Drafting Assistance Module:
+Incident description analysis
+
+Automatic IPC section suggestion (with explanations)
+
+FIR template generation with auto-fill
+
+Validation for legal completeness
+
+PDF generation with digital signature placeholder
+
+Version history and audit trail
+
+C. Case Tracking Module:
+Integration with National Judicial Data Grid (mock initially)
+
+Real-time case status updates
+
+Hearing date notifications
+
+Document access control
+
+Timeline visualization
+
+D. User Management:
+Role-based access control (Citizen, Police Officer, Admin)
+
+Secure authentication (JWT + OTP)
+
+Profile management
+
+Activity logging
+
+3. Technical Stack Requirements:
+Frontend:
+React.js with TypeScript
+
+Tailwind CSS for styling
+
+Redux for state management
+
+Chart.js for analytics
+
+PDF.js for document viewing
+
+Responsive design for mobile access
+
+Backend:
+Node.js with Express/NestJS
+
+Python for AI services (FastAPI)
+
+Database: PostgreSQL for structured data + MongoDB for documents
+
+Redis for caching
+
+RabbitMQ for async tasks
+
+AI/ML Components:
+HuggingFace transformers for NLP
+
+Custom-trained legal entity recognition model
+
+IPC classification model
+
+Multilingual translation pipeline
+
+4. Detailed API Specifications:
+Auth Service:
+POST /auth/register - User registration
+
+POST /auth/login - User login
+
+POST /auth/otp - OTP verification
+
+GET /auth/profile - User profile
+
+Chatbot Service:
+POST /chatbot/query - Process legal query
+
+GET /chatbot/history - Chat history
+
+POST /chatbot/feedback - Response feedback
+
+FIR Service:
+POST /fir/draft - Create new FIR draft
+
+GET /fir/{id} - Get FIR details
+
+PUT /fir/{id} - Update FIR
+
+POST /fir/{id}/submit - Submit final FIR
+
+GET /fir/user/{userId} - User's FIRs
+
+Case Service:
+GET /case/search - Search cases
+
+GET /case/{id} - Case details
+
+GET /case/{id}/hearings - Hearing schedule
+
+POST /case/subscribe - Subscribe for updates
+
+5. Database Schema Requirements:
+Users Table:
+id, name, email, phone, role, createdAt, lastLogin
+
+FIRs Table:
+id, userId, policeId, status, incidentType, description, location, date, sections, pdfUrl, createdAt, updatedAt
+
+Cases Table:
+caseId, title, description, status, nextHearing, court, firId, createdAt, updatedAt
+
+ChatSessions Table:
+id, userId, startedAt, endedAt, transcript
+
+6. Security Requirements:
+JWT authentication
+
+Role-based access control
+
+Data encryption at rest and transit
+
+Audit logging
+
+Rate limiting
+
+Input validation
+
+7. Deployment Requirements:
+Docker containers for each service
+
+Kubernetes configuration for scaling
+
+CI/CD pipeline
+
+Monitoring with Prometheus/Grafana
+
+8. Additional Requirements:
+Comprehensive API documentation
+
+Unit and integration tests
+
+Error handling and logging
+
+Internationalization support
+
+Accessibility compliance
+
+9. Expected Output:
+Complete source code for all components
+
+Dockerfiles and deployment scripts
+
+Database initialization scripts
+
+API documentation (OpenAPI/Swagger)
+
+Test cases
+
+Installation and setup guide
+
+The implementation should closely follow the architecture described in the project report (Figure 3.1) and include all the modules mentioned. The UI should match the design from the reference UI while implementing all the functionality described in the report.
+
+
+
+
+i have uploded my project report and frontend part that needs to redesign using react with same ui
+i have also pasted what detailes and functional requirements and all
+
+Also one more thing to mention use gemini api key instead of open ai api key
+and database design to bedone on supabase so give instruction to setup that accordingly and required information ask me i will provide all required things to you 
+main targaet it free of cost but effective project tools to be used 
+
+I give you also a free hand to add your suggestion like security as we handels sensitive data like fir etc
+i just want that poject works completely correct and this will help in real world for our stack holders i.e. common cityzen ad police man make sure that it will actually helps peopel
+
+so generate complete working project

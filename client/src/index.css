@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(224, 71%, 4%);
+  --muted: hsl(220, 14%, 96%);
+  --muted-foreground: hsl(220, 9%, 46%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(224, 71%, 4%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(224, 71%, 4%);
+  --border: hsl(220, 13%, 91%);
+  --input: hsl(220, 13%, 91%);
+  --primary: hsl(224, 76%, 25%);
+  --primary-foreground: hsl(210, 20%, 98%);
+  --secondary: hsl(220, 14%, 96%);
+  --secondary-foreground: hsl(220, 9%, 46%);
+  --accent: hsl(220, 14%, 96%);
+  --accent-foreground: hsl(220, 9%, 46%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(210, 20%, 98%);
+  --ring: hsl(224, 76%, 25%);
+  --radius: 0.5rem;
+  --legal-blue: hsl(224, 76%, 25%);
+  --legal-blue-light: hsl(221, 54%, 41%);
+  --legal-blue-lighter: hsl(221, 74%, 91%);
+  --legal-success: hsl(122, 39%, 49%);
+}
+
+.dark {
+  --background: hsl(224, 71%, 4%);
+  --foreground: hsl(213, 31%, 91%);
+  --muted: hsl(223, 47%, 11%);
+  --muted-foreground: hsl(215, 20%, 65%);
+  --popover: hsl(224, 71%, 4%);
+  --popover-foreground: hsl(213, 31%, 91%);
+  --card: hsl(224, 71%, 4%);
+  --card-foreground: hsl(213, 31%, 91%);
+  --border: hsl(216, 34%, 17%);
+  --input: hsl(216, 34%, 17%);
+  --primary: hsl(224, 76%, 25%);
+  --primary-foreground: hsl(210, 20%, 98%);
+  --secondary: hsl(223, 47%, 11%);
+  --secondary-foreground: hsl(213, 31%, 91%);
+  --accent: hsl(223, 47%, 11%);
+  --accent-foreground: hsl(213, 31%, 91%);
+  --destructive: hsl(0, 63%, 31%);
+  --destructive-foreground: hsl(213, 31%, 91%);
+  --ring: hsl(224, 76%, 25%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+}
+
+@layer utilities {
+  .legal-blue {
+    color: var(--legal-blue);
+  }
+  
+  .bg-legal-blue {
+    background-color: var(--legal-blue);
+  }
+  
+  .bg-legal-blue-light {
+    background-color: var(--legal-blue-light);
+  }
+  
+  .bg-legal-blue-lighter {
+    background-color: var(--legal-blue-lighter);
+  }
+  
+  .text-legal-blue {
+    color: var(--legal-blue);
+  }
+  
+  .text-legal-blue-light {
+    color: var(--legal-blue-light);
+  }
+  
+  .border-legal-blue {
+    border-color: var(--legal-blue);
+  }
+  
+  .chat-messages {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  
+  .message-typing {
+    animation: typing 1.5s infinite;
+  }
+  
+  @keyframes typing {
+    0%, 20% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+  
+  .step-line::before {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: hsl(220, 13%, 91%);
+    z-index: 1;
+  }
+  
+  .step-active .step-line::before {
+    background-color: var(--legal-blue);
+  }
+}

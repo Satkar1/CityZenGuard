@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | AI Legal Assistance</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/login.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <div class="logo">
+                <i class="material-icons">gavel</i>
+                <span>AI Legal Assistance</span>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="home.html"><i class="material-icons">home</i> Home</a></li>
+                    <li><a href="login.html" class="active"><i class="material-icons">account_circle</i> Login</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-title">
+                    <i class="material-icons">account_circle</i>
+                    <span>Login</span>
+                </div>
+                
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" required>
+                    </div>
+                    
+                    <div class="role-selector">
+                        <div class="role-option">
+                            <input type="radio" id="citizen" name="role" value="citizen" checked>
+                            <label for="citizen">Citizen</label>
+                        </div>
+                        <div class="role-option">
+                            <input type="radio" id="police" name="role" value="police">
+                            <label for="police">Police Officer</label>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="login-btn">Login</button>
+                </form>
+                
+                <div class="register-link">
+                    Don't have an account? <a href="#">Register here</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 AI Legal Assistance System. Developed as part of Bachelor of Technology in Computer Engineering.</p>
+    </footer>
+
+    <script src="js/script.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const role = document.querySelector('input[name="role"]:checked').value;
+            if (role === 'citizen') {
+                window.location.href = 'citizen-dashboard.html';
+            } else {
+                window.location.href = 'police-dashboard.html';
+            }
+        });
+    </script>
+</body>
+</html>
