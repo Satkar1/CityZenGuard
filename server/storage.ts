@@ -237,6 +237,14 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Use memory storage for development/demo purposes
-console.log("Using in-memory storage for development");
-export const storage = new MemStorage();
+let storageInstance: IStorage;
+
+if (process.env.NODE_ENV === "production" && process.env.DATABASE_URL) {
+  console.log("Using DatabaseStorage for production");
+  storageInstance = new DatabaseStorage();
+} else {
+  console.log("Using MemStorage for development");
+  storageInstance = new MemStorage();
+}
+
+export const storage = storageInstance;
