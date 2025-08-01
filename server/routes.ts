@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { authService } from "./services/auth";
 import { firService } from "./services/fir";
 import { analyzeLegalContent, suggestLegalSections } from "./services/gemini";
-import { insertUserSchema, insertChatMessageSchema, insertFirSchema } from "@shared/schema";
+import { insertUserSchema, insertChatMessageSchema, insertFirSchema } from "../shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
