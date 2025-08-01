@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { Fir } from "@shared/schema";
+import { Fir } from "../../shared/schema";
 
 export const firService = {
   generatePDF(fir: Fir): Buffer {
