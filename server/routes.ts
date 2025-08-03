@@ -4,6 +4,8 @@ import { storage } from "./storage";
 import { authService } from "./services/auth";
 import { firService } from "./services/fir";
 import { analyzeLegalContent, suggestLegalSections } from "./services/gemini";
+import { legalAssistant } from "./services/legal-knowledge";
+import { mlLegalAssistant } from "./services/ml-legal-assistant";
 import { insertUserSchema, insertChatMessageSchema, insertFirSchema } from "../shared/schema";
 import { z } from "zod";
 
@@ -106,12 +108,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user.id,
       });
 
-      // Generate AI response
-      const aiResponse = await analyzeLegalContent(messageData.message);
+      // Generate intelligent legal response using ML model + knowledge base + AI
+      const aiResponse = await mlLegalAssistant.generateResponse(messageData.message);
       
       const aiMessage = await storage.createChatMessage({
         message: aiResponse,
-        userId: req.user.id,
+        userId: req.user.id
       });
 
       res.json({ userMessage, aiMessage });
@@ -215,6 +217,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(400).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  // ML Model management routes
+  app.get("/api/ml/stats", authenticateToken, async (req: any, res) => {
+    try {
+      const stats = mlLegalAssistant.getModelStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get model stats" });
+    }
+  });
+
+  app.post("/api/ml/train", authenticateToken, async (req: any, res) => {
+    try {
+      if (req.user.role !== "police") {
+        return res.status(403).json({ error: "Only police officers can train the model" });
+      }
+      
+      const { csvPath } = req.body;
+      if (!csvPath) {
+        return res.status(400).json({ error: "CSV path is required" });
+      }
+      
+      const success = await mlLegalAssistant.trainNewModel(csvPath);
+      
+      if (success) {
+        res.json({ message: "Model training completed successfully" });
+      } else {
+        res.status(500).json({ error: "Model training failed" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to train model" });
     }
   });
 
