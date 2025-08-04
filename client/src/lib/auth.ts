@@ -1,6 +1,6 @@
 import { AuthUser } from "@/types";
 
-const API_BASE = "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 export const authService = {
   async login(email: string, password: string): Promise<{ user: AuthUser; token: string }> {
