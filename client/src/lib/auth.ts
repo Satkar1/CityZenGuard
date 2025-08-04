@@ -1,6 +1,6 @@
 import { AuthUser } from "@/types";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = "https://cityzenguard.onrender.com";
 
 export const authService = {
   async login(email: string, password: string): Promise<{ user: AuthUser; token: string }> {
