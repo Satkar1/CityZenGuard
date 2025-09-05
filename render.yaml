@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: cityzenguard-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+    buildCommand: |
+      echo "Building with Docker"
+    startCommand: npm start
+    healthCheckPath: /api/health
+    plan: starter
