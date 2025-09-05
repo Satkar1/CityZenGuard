@@ -40,17 +40,20 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);
     try {
-      await authService.login(data.email, data.password);
+      const response = await authService.login(data.email, data.password);
       
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
 
-      if (data.role === "citizen") {
+      // Use actual user role from API response, not form selection
+      if (response.user.role === "citizen") {
         setLocation("/citizen-dashboard");
-      } else {
+      } else if (response.user.role === "police") {
         setLocation("/police-dashboard");
+      } else {
+        setLocation("/citizen-dashboard"); // Default fallback
       }
     } catch (error) {
       toast({
