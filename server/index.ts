@@ -29,12 +29,15 @@ app.use(
         return callback(null, true);
       }
 
-      return callback(new Error("Not allowed by CORS"), false);
+      return callback(new Error("Not allowed by CORS"));
     },
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     credentials: true,
   })
 );
+
+// ✅ Allow preflight for all routes
+app.options("*", cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -73,7 +76,7 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  // ✅ Error handler that always adds CORS headers
+  // ✅ Error handler AFTER routes
   app.use((err: any, req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
