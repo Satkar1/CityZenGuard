@@ -5,10 +5,33 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(cors({
-  origin: process.env.NODE_ENV === "development" ? true : "https://city-zen-guard.vercel.app",
+  origin: (origin, callback) => {
+    if (process.env.NODE_ENV === "development") {
+      return callback(null, true); // allow all in dev
+    }
+
+    if (!origin) {
+      return callback(null, false); // block requests without origin
+    }
+
+    const allowedOrigins = [
+      "https://city-zen-guard.vercel.app", // main production frontend
+    ];
+
+    // Allow main prod OR any vercel preview subdomain
+    if (
+      allowedOrigins.includes(origin) ||
+      /\.vercel\.app$/.test(new URL(origin).hostname)
+    ) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"), false);
+  },
   methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
+  credentials: true,
 }));
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
