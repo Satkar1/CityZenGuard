@@ -7,6 +7,15 @@ import casesRoutes from "./routes/cases";
 import notificationsRoutes from "./routes/notifications";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV || "development"
+    });
+  });
+
   // Register all route modules
   app.use("/api/auth", authRoutes);
   app.use("/api/chat", chatRoutes);
