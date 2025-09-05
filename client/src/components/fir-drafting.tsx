@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import StepIndicator from "@/components/step-indicator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { authService } from "@/lib/auth";
 import { LegalSection, FirFormData } from "@/types";
 
 const firSchema = z.object({
@@ -59,18 +60,45 @@ export default function FirDrafting() {
   });
 
   const suggestSectionsMutation = useMutation({
-    mutationFn: async (data: { description: string; incidentType: string }) => {
-      const response = await apiRequest("POST", "/api/firs/suggest-sections", data);
+    mutationFn: async (data: { description: string; incidentType: string; location: string }) => {
+      const response = await apiRequest("POST", "/api/firs/predict-sections", {
+        incidentDescription: data.description,
+        incidentType: data.incidentType,
+        location: data.location,
+      });
       return response.json();
     },
     onSuccess: (data) => {
-      setSuggestedSections(data.sections);
+      // Map the response format to expected LegalSection format
+      const mappedSections = data.suggestions?.map((suggestion: any) => ({
+        section: suggestion.section,
+        title: `IPC Section ${suggestion.section}`,
+        description: suggestion.description,
+      })) || [];
+      setSuggestedSections(mappedSections);
+    },
+    onError: (error) => {
+      console.error("Section prediction error:", error);
+      toast({
+        title: "Failed to suggest sections",
+        description: "Using default sections for this incident type",
+        variant: "destructive",
+      });
     },
   });
 
   const submitFirMutation = useMutation({
     mutationFn: async (data: FirFormData) => {
-      const response = await apiRequest("POST", "/api/firs", data);
+      const user = authService.getCurrentUser();
+      if (!user) throw new Error("User not authenticated");
+      
+      const firData = {
+        ...data,
+        officerId: user.id,
+        incidentDate: new Date(data.incidentDate).toISOString(),
+      };
+      
+      const response = await apiRequest("POST", "/api/firs", firData);
       return response.json();
     },
     onSuccess: () => {
@@ -81,7 +109,8 @@ export default function FirDrafting() {
         description: "Your FIR has been submitted to the system.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("FIR submission error:", error);
       toast({
         title: "Failed to submit FIR",
         description: "Please try again",
@@ -98,6 +127,7 @@ export default function FirDrafting() {
         suggestSectionsMutation.mutate({
           description: values.description,
           incidentType: values.incidentType,
+          location: values.location,
         });
         setCurrentStep(2);
       }
