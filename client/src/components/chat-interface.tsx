@@ -21,11 +21,15 @@ export default function ChatInterface() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const user = authService.getCurrentUser();
+  const userId = user?.id;
+
   const { data: messages = [], isLoading } = useQuery<Message[]>({
-    queryKey: ["/api/chat/messages"],
+    queryKey: ["/api/chat/history", userId],
     queryFn: async () => {
+      if (!userId) return [];
       const token = authService.getToken();
-      const response = await fetch("/api/chat/messages", {
+      const response = await fetch(`/api/chat/history/${userId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -33,20 +37,24 @@ export default function ChatInterface() {
       if (!response.ok) throw new Error("Failed to fetch messages");
       return response.json();
     },
+    enabled: !!userId,
   });
 
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      const token = authService.getToken();
-      return apiRequest("POST", "/api/chat/message", {
+      if (!userId) throw new Error("User not authenticated");
+      const response = await apiRequest("POST", "/api/chat/message", {
         message,
+        userId,
       });
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/history", userId] });
       setInputMessage("");
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Chat error:", error);
       toast({
         title: "Failed to send message",
         description: "Please try again",
