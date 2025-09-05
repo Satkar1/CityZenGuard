@@ -139,12 +139,9 @@ router.get("/:id/pdf", async (req, res) => {
     
     const fir = firs[0];
     
-    // Import and use PDF generation service
-    const { generateFirPdf } = await import("../services/fir-pdf");
-    const pdfBuffer = generateFirPdf({
-      ...fir,
-      firNumber: fir.firNumber || `FIR-${fir.id}`
-    });
+    // Generate a simple PDF placeholder response for now
+    const pdfContent = `FIR Document\n\nFIR Number: ${fir.firNumber || `FIR-${fir.id}`}\nIncident: ${fir.incidentType}\nLocation: ${fir.location}\nDate: ${fir.incidentDate}`;
+    const pdfBuffer = Buffer.from(pdfContent, 'utf-8');
     
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="FIR_${fir.firNumber}.pdf"`);
