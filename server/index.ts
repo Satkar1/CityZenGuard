@@ -5,7 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(cors({
-  origin: "https://city-zen-guard.vercel.app",
+  origin: process.env.NODE_ENV === "development" ? true : "https://city-zen-guard.vercel.app",
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
@@ -74,5 +74,14 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Warm up the RAG system in background
+    if (app.get("env") !== "development") {
+      import("./services/generation/llm").then(({ warmUpModel }) => {
+        warmUpModel().catch(err => log(`Warning: Model warm-up failed: ${err.message}`));
+      }).catch(() => {
+        log("Warning: Could not import LLM service for warm-up");
+      });
+    }
   });
 })();
