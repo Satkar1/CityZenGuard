@@ -4,23 +4,15 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-
-// ✅ CORS: allow deployed frontend + local dev
-app.use(
-  cors({
-    origin: [
-      "https://city-zen-guard.vercel.app",
-      "http://localhost:5173",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: "https://city-zen-guard.vercel.app",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// ✅ request/response logger
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -40,9 +32,8 @@ app.use((req, res, next) => {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
-      if (logLine.length > 500) {
-        // don’t cut logs too aggressively, increase threshold
-        logLine = logLine.slice(0, 499) + "…";
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
       }
 
       log(logLine);
@@ -55,31 +46,33 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  // ✅ centralized error handler (don’t crash process)
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-    console.error("Unhandled error:", err);
-    res.status(status).json({ error: message });
+
+    res.status(status).json({ message });
+    throw err;
   });
 
-  // only setup vite in development
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // serve both API and client
-  const port = parseInt(process.env.PORT || "5000", 10);
-  server.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`🚀 Serving on port ${port}`);
-    }
-  );
+  // ALWAYS serve the app on the port specified in the environment variable PORT
+  // Other ports are firewalled. Default to 5000 if not specified.
+  // this serves both the API and the client.
+  // It is the only port that is not firewalled.
+  const port = parseInt(process.env.PORT || '5000', 10);
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
+    log(`serving on port ${port}`);
+  });
 })();
