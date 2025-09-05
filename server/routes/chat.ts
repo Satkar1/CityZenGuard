@@ -125,7 +125,24 @@ Keep your response clear, concise, and legally sound.`;
   }
 });
 
-// Get chat history for a user
+// Get chat messages for current user  
+router.get("/messages", async (req, res) => {
+  try {
+    // Extract user ID from JWT token (middleware should set this)
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    const messages = await storage.getChatMessagesByUserId(userId);
+    res.json(messages);
+  } catch (error) {
+    console.error("Chat messages error:", error);
+    res.status(500).json({ error: "Failed to fetch chat messages" });
+  }
+});
+
+// Get chat history for a user (alternative endpoint)
 router.get("/history/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
