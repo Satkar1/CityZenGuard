@@ -1,15 +1,10 @@
 import { AuthUser } from "@/types";
 
-// ✅ use env-based API base, fallback to /api
-const API_BASE =
-  import.meta.env.VITE_API_URL || "https://cityzenguard.onrender.com/api";
+const API_BASE = "https://cityzenguard.onrender.com";
 
 export const authService = {
-  async login(
-    email: string,
-    password: string
-  ): Promise<{ user: AuthUser; token: string }> {
-    const response = await fetch(`${API_BASE}/auth/login`, {
+  async login(email: string, password: string): Promise<{ user: AuthUser; token: string }> {
+    const response = await fetch(`${API_BASE}/api/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -18,8 +13,7 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Login failed: ${errorText}`);
+      throw new Error("Login failed");
     }
 
     const data = await response.json();
@@ -28,13 +22,8 @@ export const authService = {
     return data;
   },
 
-  async register(
-    fullName: string,
-    email: string,
-    password: string,
-    role: "citizen" | "police"
-  ): Promise<{ user: AuthUser }> {
-    const response = await fetch(`${API_BASE}/auth/register`, {
+  async register(fullName: string, email: string, password: string, role: "citizen" | "police"): Promise<{ user: AuthUser }> {
+    const response = await fetch(`${API_BASE}/api/auth/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -43,8 +32,7 @@ export const authService = {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Registration failed: ${errorText}`);
+      throw new Error("Registration failed");
     }
 
     return response.json();
