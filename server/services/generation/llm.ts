@@ -2,7 +2,6 @@
 const HF_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
 const HF_GEN_MODEL = process.env.HUGGINGFACE_GENERATION_MODEL || "google/flan-t5-small";
 
-/** Build a concise prompt that includes system + retrieved contexts + question */
 function buildPrompt(question: string, contexts: Array<{ title: string; text: string }>) {
   const system = `You are a helpful legal assistant for Indian citizens. Use the provided context extracts (legal code, procedures, FAQs) to answer the question concisely and accurately. If the answer is uncertain, advise consulting a qualified lawyer.`;
   const ctxText = contexts.map((c, i) => `Context ${i + 1} - ${c.title}:\n${c.text}`).join("\n\n---\n\n");
@@ -10,12 +9,10 @@ function buildPrompt(question: string, contexts: Array<{ title: string; text: st
   return prompt;
 }
 
-/** Call Hugging Face text-generation model */
 export async function generateAnswer(question: string, contexts: Array<{ title: string; text: string }>, maxTokens = 256) {
   if (!HF_TOKEN) {
     throw new Error("HUGGINGFACE_API_TOKEN is not set");
   }
-
   const prompt = buildPrompt(question, contexts);
   const url = `https://api-inference.huggingface.co/models/${HF_GEN_MODEL}`;
 
@@ -42,7 +39,6 @@ export async function generateAnswer(question: string, contexts: Array<{ title: 
     }
 
     const json = await res.json();
-    // HF often returns an array like [{ generated_text: "..." }]
     let textOutput = "";
     if (Array.isArray(json) && json[0] && json[0].generated_text) {
       textOutput = json[0].generated_text;
