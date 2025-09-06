@@ -27,24 +27,20 @@ router.post("/message", async (req, res) => {
       message: text
     });
 
-    // RAG retrieval
     console.log(`[Chat] Processing query: "${text}" for user: ${userId}`);
     const retrieved = await retrieveTopK(text, 3);
     console.log("[Chat] Retrieved docs:", retrieved.map(r => ({ id: r.id, score: r.score, title: r.title })));
 
     const contexts = retrieved.map(r => ({ title: r.title, text: r.text }));
 
-    // Generate answer via Hugging Face
     let aiResponse = "I couldn't find a good answer. Please consult a lawyer.";
     try {
       aiResponse = await generateAnswer(text, contexts);
     } catch (genErr) {
       console.error("Generation error", genErr);
-      // fallback: combine top contexts as naive answer
       aiResponse = contexts.map(c => `${c.title} — ${c.text}`).join("\n\n");
     }
 
-    // Save AI response
     const aiMessage = await storage.createChatMessage({
       userId,
       message: aiResponse
