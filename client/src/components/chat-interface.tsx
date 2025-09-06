@@ -24,16 +24,20 @@ export default function ChatInterface() {
   const user = authService.getCurrentUser();
   const userId = user?.id;
 
+  // ✅ Always call backend with full VITE_API_URL
   const { data: messages = [], isLoading } = useQuery<Message[]>({
     queryKey: ["/api/chat/history", userId],
     queryFn: async () => {
       if (!userId) return [];
       const token = authService.getToken();
-      const response = await fetch(`/api/chat/history/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/chat/history/${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       if (!response.ok) throw new Error("Failed to fetch messages");
       return response.json();
     },
@@ -91,7 +95,7 @@ export default function ChatInterface() {
     <Card className="overflow-hidden">
       <CardHeader className="bg-legal-blue text-white p-4 flex flex-row items-center">
         <svg className="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z"/>
+          <path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z" />
         </svg>
         <h3 className="text-lg font-semibold">AI Legal Assistant</h3>
         <Badge className="ml-auto bg-green-500">Online</Badge>
@@ -103,12 +107,19 @@ export default function ChatInterface() {
             <div className="mb-4">
               <div className="flex items-start space-x-3">
                 <div className="w-8 h-8 bg-legal-blue rounded-full flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z"/>
+                  <svg
+                    className="w-4 h-4 text-white"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z" />
                   </svg>
                 </div>
                 <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 max-w-xs lg:max-w-md shadow-sm">
-                  <p className="text-gray-800">Hello! I'm your AI Legal Assistant. How can I help you today? You can ask me about:</p>
+                  <p className="text-gray-800">
+                    Hello! I'm your AI Legal Assistant. How can I help you
+                    today? You can ask me about:
+                  </p>
                   <ul className="mt-2 text-sm text-gray-600 space-y-1">
                     <li>• Case status inquiries</li>
                     <li>• FIR filing assistance</li>
@@ -125,8 +136,12 @@ export default function ChatInterface() {
               {message.isFromAI ? (
                 <div className="flex items-start space-x-3">
                   <div className="w-8 h-8 bg-legal-blue rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z"/>
+                    <svg
+                      className="w-4 h-4 text-white"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z" />
                     </svg>
                   </div>
                   <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 max-w-xs lg:max-w-md shadow-sm">
@@ -139,21 +154,29 @@ export default function ChatInterface() {
                     <p>{message.message}</p>
                   </div>
                   <div className="w-8 h-8 bg-gray-400 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z"/>
+                    <svg
+                      className="w-4 h-4 text-white"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z" />
                     </svg>
                   </div>
                 </div>
               )}
             </div>
           ))}
-          
+
           {sendMessageMutation.isPending && (
             <div className="mb-4">
               <div className="flex items-start space-x-3">
                 <div className="w-8 h-8 bg-legal-blue rounded-full flex items-center justify-center">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z"/>
+                  <svg
+                    className="w-4 h-4 text-white"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 2A10 10 0 0 0 2 12a10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2z" />
                   </svg>
                 </div>
                 <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
@@ -162,7 +185,7 @@ export default function ChatInterface() {
               </div>
             </div>
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
 
@@ -176,13 +199,13 @@ export default function ChatInterface() {
               className="flex-1 rounded-full"
               disabled={sendMessageMutation.isPending}
             />
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="bg-legal-blue hover:bg-legal-blue-light rounded-full p-3"
               disabled={sendMessageMutation.isPending || !inputMessage.trim()}
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z"/>
+                <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
               </svg>
             </Button>
           </form>
