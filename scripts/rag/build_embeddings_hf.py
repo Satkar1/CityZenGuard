@@ -2,7 +2,7 @@
 """
 scripts/rag/build_embeddings_hf.py
 - Reads files under data/legal/*
-- Chunk texts, call HF feature-extraction API in small batches with retries
+- Chunk texts, call HF Inference API in small batches with retries
 - Writes server/rag/docstore.json and server/rag/embeddings.json
 """
 import os
@@ -24,16 +24,14 @@ HF_TOKEN = os.environ.get("HF_API_TOKEN")
 USER_MODEL = os.environ.get("HUGGINGFACE_EMBEDDING_MODEL", "BAAI/bge-small-en")
 FALLBACK_MODEL = "intfloat/e5-small"
 
-
 if not HF_TOKEN:
     raise RuntimeError("HF_API_TOKEN not set")
 
 HEADERS = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
 
-# always hit feature-extraction pipeline
 def make_url(model_name: str) -> str:
-    return f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_name}"
-
+    """Correct HF Inference API endpoint"""
+    return f"https://api-inference.huggingface.co/models/{model_name}"
 
 # -----------------------------
 # Helpers
@@ -47,7 +45,6 @@ def chunk_text(text, max_chars=1000, overlap=200):
         parts.append(part)
         i += max_chars - overlap
     return parts
-
 
 def batch_embed(texts, model, batch_size=8, timeout=60, retries=4, backoff=5):
     """Send texts to HF inference API in batches"""
@@ -71,7 +68,6 @@ def batch_embed(texts, model, batch_size=8, timeout=60, retries=4, backoff=5):
                         embeddings.extend(out if isinstance(out, list) else [out])
                     time.sleep(0.5)
                     break
-
                 else:
                     print(f"[WARNING] HF embedding failed (status {res.status_code}): {res.text[:200]}")
                     attempt += 1
@@ -90,7 +86,6 @@ def batch_embed(texts, model, batch_size=8, timeout=60, retries=4, backoff=5):
             raise RuntimeError(f"Embedding batch {i}-{i+len(batch)} failed after {retries} retries")
 
     return embeddings
-
 
 # -----------------------------
 # Main
@@ -136,8 +131,7 @@ def main():
     with open(embeddings_path, "w", encoding="utf-8") as f:
         json.dump(embeddings, f, ensure_ascii=False)
 
-    print(f"[build_embeddings] Wrote docstore ({docstore_path}) and embeddings ({embeddings_path}), total chunks: {len(docstore)}")
-
+    print(f"[build_embeddings] Wrote docstore ({docstore_path}) and embeddings ({embeddings_path}), total chunks: {len(docstore)})")
 
 if __name__ == "__main__":
     main()
