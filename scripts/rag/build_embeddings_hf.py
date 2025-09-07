@@ -19,7 +19,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 HF_TOKEN = os.environ.get("HF_API_TOKEN")
 EMBED_MODEL = os.environ.get("HUGGINGFACE_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-EMBED_URL = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{EMBED_MODEL}"
+EMBED_URL = f"https://api-inference.huggingface.co/models/{EMBED_MODEL}"
 
 if not HF_TOKEN:
     raise RuntimeError("HF_API_TOKEN not set")
