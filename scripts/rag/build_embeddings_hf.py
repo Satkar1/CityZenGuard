@@ -22,7 +22,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 HF_TOKEN = os.environ.get("HF_API_TOKEN")
 USER_MODEL = os.environ.get("HUGGINGFACE_EMBEDDING_MODEL", "BAAI/bge-small-en")
-FALLBACK_MODEL = "intfloat/e5-small"
+FALLBACK_MODEL = "thenlper/gte-small"
 
 if not HF_TOKEN:
     raise RuntimeError("HF_API_TOKEN not set")
