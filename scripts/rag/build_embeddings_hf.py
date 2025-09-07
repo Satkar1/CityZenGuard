@@ -27,6 +27,7 @@ if not HF_TOKEN:
 HEADERS = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
 
 def chunk_text(text, max_chars=1000, overlap=200):
+    """Split long text into overlapping chunks for embedding."""
     text = text.replace("\r", "")
     parts = []
     i = 0
@@ -36,23 +37,24 @@ def chunk_text(text, max_chars=1000, overlap=200):
         i += max_chars - overlap
     return parts
 
-def batch_embed(texts, batch_size=16, timeout=120, retries=3, backoff=5):
+def batch_embed(texts, batch_size=8, timeout=60, retries=3, backoff=5):
+    """Embed texts using Hugging Face API in small batches with retries."""
     embeddings = []
     for i in range(0, len(texts), batch_size):
         batch = texts[i:i+batch_size]
         attempt = 0
         while attempt < retries:
             try:
+                print(f"[INFO] Embedding batch {i}-{i+len(batch)} (size {len(batch)})...")
                 res = requests.post(EMBED_URL, headers=HEADERS, json={"inputs": batch}, timeout=timeout)
                 if res.status_code == 200:
                     out = res.json()
-                    # HF returns list-of-lists when batch input; normalize
+                    # HF returns list-of-lists when batch input
                     if isinstance(out, list) and isinstance(out[0], list):
                         embeddings.extend(out)
                     else:
-                        # single vector per input
                         embeddings.extend(out if isinstance(out, list) else [out])
-                    time.sleep(0.2)  # gentle
+                    time.sleep(0.3)  # polite delay
                     break
                 else:
                     print(f"[WARNING] HF embedding failed (status {res.status_code}): {res.text}")
@@ -96,7 +98,7 @@ def main():
         print("[build_embeddings] No texts found — exiting")
         return
 
-    embeddings = batch_embed(texts, batch_size=16, timeout=120, retries=4, backoff=5)
+    embeddings = batch_embed(texts, batch_size=8, timeout=60, retries=4, backoff=5)
     if len(embeddings) != len(texts):
         print(f"[WARNING] embeddings length {len(embeddings)} != texts {len(texts)}")
 
