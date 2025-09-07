@@ -1,7 +1,13 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
+import path from "path";
+import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+
+// ✅ Polyfill __dirname for ESM (since Node.js v22 treats .ts/.js as ESM with "type": "module")
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
