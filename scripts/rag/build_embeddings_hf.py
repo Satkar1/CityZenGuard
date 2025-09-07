@@ -21,8 +21,9 @@ OUT_DIR = ROOT / "server" / "rag"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 HF_TOKEN = os.environ.get("HF_API_TOKEN")
-USER_MODEL = os.environ.get("HUGGINGFACE_EMBEDDING_MODEL", "sentence-transformers/all-mpnet-base-v2")
-FALLBACK_MODEL = "sentence-transformers/paraphrase-MiniLM-L3-v2"
+USER_MODEL = os.environ.get("HUGGINGFACE_EMBEDDING_MODEL", "BAAI/bge-small-en")
+FALLBACK_MODEL = "intfloat/e5-small"
+
 
 if not HF_TOKEN:
     raise RuntimeError("HF_API_TOKEN not set")
