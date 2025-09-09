@@ -1,9 +1,17 @@
 // server/services/rag/retriever.ts
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url"; // <-- added for ESM __dirname polyfill
+
+// Polyfill __dirname for ESM builds (Node ESM doesn't supply __dirname)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const HF_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
-const HF_EMBED_MODEL = process.env.HUGGINGFACE_EMBEDDING_MODEL || "sentence-transformers/all-MiniLM-L6-v2";
+const HF_EMBED_MODEL =
+  process.env.HUGGINGFACE_EMBEDDING_MODEL || "sentence-transformers/all-MiniLM-L6-v2";
+
+// Use ESM-safe __dirname above
 const RAG_DIR = path.join(__dirname, "..", "..", "rag"); // server/rag
 
 type DocItem = {
@@ -14,36 +22,66 @@ type DocItem = {
 };
 
 let docstore: Record<string, DocItem> = {};
+
+// load docstore and embeddings on startup (if present)
 let embeddings: number[][] = [];
 
 function loadIndex() {
   try {
-    const docPath = path.join(RAG_DIR, "docstore.json");
-    const embPath = path.join(RAG_DIR, "embeddings.json");
-    if (fs.existsSync(docPath)) {
-      docstore = JSON.parse(fs.readFileSync(docPath, "utf8"));
+    const docstorePath = path.join(RAG_DIR, "docstore.json");
+    const embeddingsPath = path.join(RAG_DIR, "embeddings.json");
+
+    if (fs.existsSync(docstorePath)) {
+      const raw = fs.readFileSync(docstorePath, "utf-8");
+      docstore = JSON.parse(raw);
+      console.log(`[RAG] Loaded docstore (${Object.keys(docstore).length} docs) from ${docstorePath}`);
     } else {
-      console.warn("retriever: docstore.json not found at", docPath);
+      console.warn(`[RAG] docstore.json not found at ${docstorePath}`);
     }
 
-    if (fs.existsSync(embPath)) {
-      embeddings = JSON.parse(fs.readFileSync(embPath, "utf8"));
+    if (fs.existsSync(embeddingsPath)) {
+      const rawEmb = fs.readFileSync(embeddingsPath, "utf-8");
+      embeddings = JSON.parse(rawEmb);
+      console.log(`[RAG] Loaded embeddings (${embeddings.length} vectors) from ${embeddingsPath}`);
     } else {
-      console.warn("retriever: embeddings.json not found at", embPath);
+      console.warn(`[RAG] embeddings.json not found at ${embeddingsPath}`);
     }
-
-    console.log(`[retriever] Loaded docstore (${Object.keys(docstore).length}) and embeddings (${embeddings.length})`);
   } catch (err) {
-    console.error("retriever: Failed to load RAG files:", err);
+    console.error("[RAG] Failed to load index:", err);
   }
 }
 
 loadIndex();
 
-async function getQueryEmbedding(queryText: string): Promise<number[] | null> {
-  if (!HF_TOKEN) return null;
-  const url = `https://api-inference.huggingface.co/pipeline/feature-extraction/${HF_EMBED_MODEL}`;
+// simple cosine similarity helper
+function cosine(a: number[], b: number[]) {
   try {
+    let dot = 0;
+    let na = 0;
+    let nb = 0;
+    for (let i = 0; i < a.length && i < b.length; i++) {
+      dot += a[i] * b[i];
+      na += a[i] * a[i];
+      nb += b[i] * b[i];
+    }
+    if (na === 0 || nb === 0) return 0;
+    return dot / (Math.sqrt(na) * Math.sqrt(nb));
+  } catch (e) {
+    return 0;
+  }
+}
+
+// getQueryEmbedding – calls HF Inference API (models/*) to get embedding for a string
+async function getQueryEmbedding(queryText: string): Promise<number[] | null> {
+  try {
+    if (!HF_TOKEN) {
+      console.warn("[RAG] No HF token configured; cannot call HF embeddings");
+      return null;
+    }
+
+    const model = HF_EMBED_MODEL;
+    const url = `https://api-inference.huggingface.co/models/${model}`;
+
     const res = await fetch(url, {
       method: "POST",
       headers: {
@@ -52,56 +90,46 @@ async function getQueryEmbedding(queryText: string): Promise<number[] | null> {
       },
       body: JSON.stringify({ inputs: queryText }),
     });
+
     if (!res.ok) {
-      console.error("HF embedding call failed", res.status, await res.text());
+      const txt = await res.text().catch(() => "");
+      console.warn(`[RAG] HF embedding failed (status ${res.status}): ${txt}`);
       return null;
     }
-    const json = await res.json();
-    const emb = Array.isArray(json) && Array.isArray(json[0]) ? json[0] : json;
-    return emb as number[];
+    const out = await res.json();
+    // out is either vector (list of floats) or an array-of-arrays
+    if (Array.isArray(out) && Array.isArray(out[0])) {
+      return out[0] as number[];
+    }
+    if (Array.isArray(out) && typeof out[0] === "number") {
+      return out as number[];
+    }
+    return null;
   } catch (err) {
-    console.error("Error calling HF embeddings:", err);
+    console.warn("[RAG] getQueryEmbedding error:", err);
     return null;
   }
 }
 
-function dot(a: number[], b: number[]) {
-  let s = 0;
-  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
-  return s;
-}
-function norm(v: number[]) {
-  let s = 0;
-  for (let i = 0; i < v.length; i++) s += v[i] * v[i];
-  return Math.sqrt(s);
-}
-function cosine(a: number[], b: number[]) {
-  const na = norm(a);
-  const nb = norm(b);
-  if (na === 0 || nb === 0) return 0;
-  return dot(a, b) / (na * nb);
-}
-
-export async function retrieveTopK(queryText: string, topK = 3) {
-  if (!embeddings || embeddings.length === 0) {
-    // simple keyword fallback
-    const qwords = new Set(queryText.toLowerCase().match(/\w+/g) || []);
-    const results: Array<{ id: number; score: number; title: string; text: string; source?: string }> = [];
-    for (const key of Object.keys(docstore)) {
-      const doc = docstore[key];
-      const dwords = new Set((doc.text || "").toLowerCase().match(/\w+/g) || []);
-      const inter = [...qwords].filter(x => dwords.has(x)).length;
-      const union = new Set([...qwords, ...dwords]).size || 1;
-      const score = inter / union;
-      results.push({ id: parseInt(key, 10), score, title: doc.title, text: doc.text.slice(0, 800), source: doc.source });
-    }
-    results.sort((a, b) => b.score - a.score);
-    return results.slice(0, topK);
+/**
+ * retrieveRelevantDocs
+ * - queryText: user question
+ * - topK: how many docs to return
+ *
+ * returns array: { id, score, title, text, source }
+ */
+export async function retrieveRelevantDocs(queryText: string, topK = 3) {
+  // if we have precomputed embeddings, do cosine similarity
+  if (!embeddings || embeddings.length === 0 || Object.keys(docstore).length === 0) {
+    console.warn("[RAG] Empty index, returning empty results");
+    return [];
   }
 
   const qEmb = await getQueryEmbedding(queryText);
+
+  // fallback to simple keyword matching if HF embeddings fail
   if (!qEmb) {
-    console.warn("HF embeddings failed for query; using keyword fallback");
+    console.warn("[RAG] HF embeddings failed for query; using keyword fallback");
     const qwords = new Set(queryText.toLowerCase().match(/\w+/g) || []);
     const results: Array<{ id: number; score: number; title: string; text: string; source?: string }> = [];
     for (const key of Object.keys(docstore)) {
@@ -116,6 +144,7 @@ export async function retrieveTopK(queryText: string, topK = 3) {
     return results.slice(0, topK);
   }
 
+  // compute cosine against stored embeddings (assumes embeddings array order matches docstore keys 0..N-1)
   const scored: Array<{ id: number; score: number; title: string; text: string; source?: string }> = [];
   for (let i = 0; i < embeddings.length && i < Object.keys(docstore).length; i++) {
     const emb = embeddings[i];
