@@ -159,3 +159,4 @@ export async function retrieveRelevantDocs(queryText: string, topK = 3) {
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, topK);
 }
+export const retrieveTopK = retrieveRelevantDocs;
