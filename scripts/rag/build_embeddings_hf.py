@@ -2,21 +2,20 @@
 """
 scripts/rag/build_embeddings_hf.py
 - Reads files under data/legal/* (txt, md, csv, pdf, docx)
-- Chunk texts, call HF feature-extraction API in small batches with retries
+- Chunk texts, generate embeddings locally using sentence-transformers
 - Writes server/rag/docstore.json and server/rag/embeddings.json
 """
 
 import os
 import json
 import glob
-import time
 import csv
-import requests
 from pathlib import Path
 
 # Extra imports for file parsing
 from PyPDF2 import PdfReader
 import docx  # python-docx
+from sentence_transformers import SentenceTransformer
 
 # -----------------------------
 # Config
@@ -26,24 +25,12 @@ DATA_DIR = ROOT / "data" / "legal"
 OUT_DIR = ROOT / "server" / "rag"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-HF_TOKEN = os.environ.get("HF_API_TOKEN")
-# Use models available on free HF API
+# Use a strong embedding model locally
 USER_MODEL = os.environ.get(
     "HUGGINGFACE_EMBEDDING_MODEL",
-    "sentence-transformers/all-MiniLM-L6-v2"  # ✅ guaranteed available
+    "BAAI/bge-base-en-v1.5"  # default local model
 )
 FALLBACK_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-
-
-
-
-if not HF_TOKEN:
-    raise RuntimeError("HF_API_TOKEN not set")
-
-HEADERS = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
-
-def make_url(model_name: str) -> str:
-    return f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_name}"
 
 # -----------------------------
 # Helpers
@@ -57,6 +44,7 @@ def chunk_text(text, max_chars=1000, overlap=200):
         parts.append(part)
         i += max_chars - overlap
     return parts
+
 
 def load_documents(data_dir=DATA_DIR):
     docs = []
@@ -99,41 +87,18 @@ def load_documents(data_dir=DATA_DIR):
 
     return docs
 
-def batch_embed(texts, model, batch_size=8, timeout=60, retries=4, backoff=5):
+
+def batch_embed_local(texts, model_name, batch_size=8):
+    """Generate embeddings locally using sentence-transformers"""
+    print(f"[INFO] Loading model {model_name} locally...")
+    model = SentenceTransformer(model_name)
     embeddings = []
-    url = make_url(model)
 
     for i in range(0, len(texts), batch_size):
         batch = texts[i:i+batch_size]
-        attempt = 0
-        while attempt < retries:
-            try:
-                print(f"[INFO] Embedding batch {i}-{i+len(batch)} (size {len(batch)}) with {model}...")
-                res = requests.post(url, headers=HEADERS, json={"inputs": batch}, timeout=timeout)
-
-                if res.status_code == 200:
-                    out = res.json()
-                    if isinstance(out, list) and isinstance(out[0], list):
-                        embeddings.extend(out)
-                    else:
-                        embeddings.extend(out if isinstance(out, list) else [out])
-                    time.sleep(0.5)
-                    break
-                else:
-                    print(f"[WARNING] HF embedding failed (status {res.status_code}): {res.text[:200]}")
-                    attempt += 1
-                    time.sleep(backoff * attempt)
-
-            except requests.exceptions.ReadTimeout:
-                print(f"[WARNING] Timeout for batch {i}-{i+len(batch)}, retrying...")
-                attempt += 1
-                time.sleep(backoff * attempt)
-            except Exception as e:
-                print(f"[ERROR] Unexpected error embedding batch {i}-{i+len(batch)}: {e}")
-                attempt += 1
-                time.sleep(backoff * attempt)
-        else:
-            raise RuntimeError(f"Embedding batch {i}-{i+len(batch)} failed after {retries} retries")
+        print(f"[INFO] Embedding batch {i}-{i+len(batch)} (size {len(batch)})...")
+        vecs = model.encode(batch, show_progress_bar=False, convert_to_numpy=True).tolist()
+        embeddings.extend(vecs)
 
     return embeddings
 
@@ -151,7 +116,12 @@ def main():
             continue
         chunks = chunk_text(content, max_chars=1000, overlap=200)
         for chunk in chunks:
-            docstore[str(doc_id)] = {"id": doc_id, "title": fname, "text": chunk, "source": fname}
+            docstore[str(doc_id)] = {
+                "id": doc_id,
+                "title": fname,
+                "text": chunk,
+                "source": fname,
+            }
             texts.append(chunk)
             doc_id += 1
 
@@ -161,11 +131,11 @@ def main():
         return
 
     try:
-        embeddings = batch_embed(texts, USER_MODEL, batch_size=8)
+        embeddings = batch_embed_local(texts, USER_MODEL, batch_size=8)
     except Exception as e:
         print(f"[ERROR] Primary model {USER_MODEL} failed: {e}")
         print(f"[INFO] Falling back to {FALLBACK_MODEL}...")
-        embeddings = batch_embed(texts, FALLBACK_MODEL, batch_size=8)
+        embeddings = batch_embed_local(texts, FALLBACK_MODEL, batch_size=8)
 
     if len(embeddings) != len(texts):
         print(f"[WARNING] embeddings length {len(embeddings)} != texts {len(texts)}")
@@ -178,7 +148,10 @@ def main():
     with open(embeddings_path, "w", encoding="utf-8") as f:
         json.dump(embeddings, f, ensure_ascii=False)
 
-    print(f"[INFO] [build_embeddings] Wrote docstore ({docstore_path}) and embeddings ({embeddings_path}), total chunks: {len(docstore)})")
+    print(
+        f"[INFO] [build_embeddings] Wrote docstore ({docstore_path}) and embeddings ({embeddings_path}), total chunks: {len(docstore)})"
+    )
+
 
 if __name__ == "__main__":
     main()
