@@ -28,8 +28,12 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 HF_TOKEN = os.environ.get("HF_API_TOKEN")
 # Use models available on free HF API
-USER_MODEL = os.environ.get("HUGGINGFACE_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
-FALLBACK_MODEL = "sentence-transformers/paraphrase-MiniLM-L3-v2"
+USER_MODEL = os.environ.get(
+    "HUGGINGFACE_EMBEDDING_MODEL",
+    "sentence-transformers/all-MiniLM-L6-v2"  # ✅ guaranteed available
+)
+FALLBACK_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
 
 
 
