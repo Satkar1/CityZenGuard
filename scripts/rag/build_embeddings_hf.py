@@ -1,137 +1,115 @@
 #!/usr/bin/env python3
 """
-scripts/rag/build_embeddings_hf.py
-- Reads files under data/legal/*
-- Chunk texts, call HF Inference API in small batches with retries
-- Writes server/rag/docstore.json and server/rag/embeddings.json
+Build embeddings for documents in the RAG system.
+This script prepares chunks from documents and generates embeddings using
+the Hugging Face Inference API (or fallback to a secondary model).
 """
+
 import os
 import json
-import glob
 import time
 import requests
 from pathlib import Path
 
-# -----------------------------
-# Config
-# -----------------------------
-ROOT = Path(__file__).resolve().parents[2]  # CityZenGuard/
-DATA_DIR = ROOT / "data" / "legal"
-OUT_DIR = ROOT / "server" / "rag"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+# === Configuration ===
+DOCS_DIR = Path("server/rag/docs")
+RAG_DIR = Path("server/rag")
+DOCSTORE_FILE = RAG_DIR / "docstore.json"
+EMBEDDINGS_FILE = RAG_DIR / "embeddings.json"
 
-HF_TOKEN = os.environ.get("HF_API_TOKEN")
-USER_MODEL = os.environ.get("HUGGINGFACE_EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
+HF_API_TOKEN = os.environ.get("HF_API_TOKEN")
+PRIMARY_MODEL = os.environ.get("HUGGINGFACE_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 FALLBACK_MODEL = "BAAI/bge-base-en-v1.5"
 
-if not HF_TOKEN:
-    raise RuntimeError("HF_API_TOKEN not set")
+HEADERS = {"Authorization": f"Bearer {HF_API_TOKEN}"} if HF_API_TOKEN else {}
 
-HEADERS = {"Authorization": f"Bearer {HF_TOKEN}", "Content-Type": "application/json"}
 
-def make_url(model_name: str) -> str:
-    """Correct HF Inference API endpoint"""
-    return f"https://api-inference.huggingface.co/models/{model_name}"
+# === Helpers ===
+def log(msg: str):
+    print(f"[INFO] {msg}", flush=True)
 
-# -----------------------------
-# Helpers
-# -----------------------------
-def chunk_text(text, max_chars=1000, overlap=200):
-    text = text.replace("\r", "")
-    parts = []
-    i = 0
-    while i < len(text):
-        part = text[i:i+max_chars]
-        parts.append(part)
-        i += max_chars - overlap
-    return parts
 
-def batch_embed(texts, model, batch_size=8, timeout=60, retries=4, backoff=5):
-    """Send texts to HF inference API in batches"""
+def read_documents():
+    """Read all documents from DOCS_DIR."""
+    docs = []
+    for path in DOCS_DIR.glob("*.txt"):
+        text = path.read_text(encoding="utf-8").strip()
+        docs.append({"id": path.name, "text": text})
+    return docs
+
+
+def chunk_text(text, max_len=500):
+    """Simple chunking of text into fixed-size pieces."""
+    words = text.split()
+    for i in range(0, len(words), max_len):
+        yield " ".join(words[i : i + max_len])
+
+
+def embed_batch(model: str, batch: list[str]) -> list[list[float]]:
+    """Send a batch of sentences to Hugging Face Inference API for embeddings."""
+    url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model}"
+    payload = {"inputs": batch}  # ✅ FIXED: was "sentences", should be "inputs"
+    resp = requests.post(url, headers=HEADERS, json=payload, timeout=60)
+
+    if resp.status_code != 200:
+        raise RuntimeError(f"HF embedding failed (status {resp.status_code}): {resp.text}")
+
+    return resp.json()
+
+
+def build_embeddings():
+    docs = read_documents()
+    chunks = []
+    for doc in docs:
+        for chunk in chunk_text(doc["text"]):
+            chunks.append({"doc_id": doc["id"], "text": chunk})
+
+    log(f"[build_embeddings] Prepared {len(chunks)} chunks from {len(docs)} files")
+
     embeddings = []
-    url = make_url(model)
-
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i:i+batch_size]
-        attempt = 0
-        while attempt < retries:
-            try:
-                print(f"[INFO] Embedding batch {i}-{i+len(batch)} (size {len(batch)}) with {model}...")
-                res = requests.post(url, headers=HEADERS, json={"inputs": batch}, timeout=timeout)
-
-                if res.status_code == 200:
-                    out = res.json()
-                    # normalize shape
-                    if isinstance(out, list) and isinstance(out[0], list):
-                        embeddings.extend(out)
-                    else:
-                        embeddings.extend(out if isinstance(out, list) else [out])
-                    time.sleep(0.5)
-                    break
-                else:
-                    print(f"[WARNING] HF embedding failed (status {res.status_code}): {res.text[:200]}")
-                    attempt += 1
-                    time.sleep(backoff * attempt)
-
-            except requests.exceptions.ReadTimeout:
-                print(f"[WARNING] Timeout for batch {i}-{i+len(batch)}, retrying...")
-                attempt += 1
-                time.sleep(backoff * attempt)
-
-            except Exception as e:
-                print(f"[ERROR] Unexpected error embedding batch {i}-{i+len(batch)}: {e}")
-                attempt += 1
-                time.sleep(backoff * attempt)
-        else:
-            raise RuntimeError(f"Embedding batch {i}-{i+len(batch)} failed after {retries} retries")
-
-    return embeddings
-
-# -----------------------------
-# Main
-# -----------------------------
-def main():
-    files = sorted(glob.glob(str(DATA_DIR / "*.*")))
-    docstore = {}
-    texts = []
-
-    doc_id = 0
-    for fpath in files:
-        title = Path(fpath).name
-        with open(fpath, "r", encoding="utf-8") as f:
-            content = f.read().strip()
-        if not content:
-            continue
-        chunks = chunk_text(content, max_chars=1000, overlap=200)
-        for chunk in chunks:
-            docstore[str(doc_id)] = {"id": doc_id, "title": title, "text": chunk, "source": title}
-            texts.append(chunk)
-            doc_id += 1
-
-    print(f"[build_embeddings] Prepared {len(texts)} chunks from {len(files)} files")
-    if len(texts) == 0:
-        print("[build_embeddings] No texts found — exiting")
-        return
+    batch_size = 8
 
     try:
-        embeddings = batch_embed(texts, USER_MODEL, batch_size=8)
-    except Exception as e:
-        print(f"[ERROR] Primary model {USER_MODEL} failed: {e}")
-        print(f"[INFO] Falling back to {FALLBACK_MODEL}...")
-        embeddings = batch_embed(texts, FALLBACK_MODEL, batch_size=8)
+        for i in range(0, len(chunks), batch_size):
+            batch = [c["text"] for c in chunks[i : i + batch_size]]
+            log(f"Embedding batch {i}-{i+len(batch)} (size {len(batch)}) with {PRIMARY_MODEL}...")
+            for attempt in range(4):
+                try:
+                    vecs = embed_batch(PRIMARY_MODEL, batch)
+                    break
+                except Exception as e:
+                    log(f"Warning:  HF embedding failed ({e}), retry {attempt+1}/4")
+                    time.sleep(2)
+            else:
+                raise RuntimeError(f"Primary model {PRIMARY_MODEL} failed: Embedding batch {i}-{i+len(batch)} failed after 4 retries")
 
-    if len(embeddings) != len(texts):
-        print(f"[WARNING] embeddings length {len(embeddings)} != texts {len(texts)}")
+            for j, vec in enumerate(vecs):
+                embeddings.append({"text": batch[j], "embedding": vec, "doc_id": chunks[i + j]["doc_id"]})
 
-    # write outputs
-    docstore_path = OUT_DIR / "docstore.json"
-    embeddings_path = OUT_DIR / "embeddings.json"
-    with open(docstore_path, "w", encoding="utf-8") as f:
-        json.dump(docstore, f, ensure_ascii=False, indent=2)
-    with open(embeddings_path, "w", encoding="utf-8") as f:
-        json.dump(embeddings, f, ensure_ascii=False)
+    except Exception as primary_err:
+        log(f"Error:  {primary_err}")
+        log(f"[INFO] Falling back to {FALLBACK_MODEL}...")
 
-    print(f"[build_embeddings] Wrote docstore ({docstore_path}) and embeddings ({embeddings_path}), total chunks: {len(docstore)})")
+        for i in range(0, len(chunks), batch_size):
+            batch = [c["text"] for c in chunks[i : i + batch_size]]
+            log(f"Embedding batch {i}-{i+len(batch)} (size {len(batch)}) with {FALLBACK_MODEL}...")
+            vecs = embed_batch(FALLBACK_MODEL, batch)
+            for j, vec in enumerate(vecs):
+                embeddings.append({"text": batch[j], "embedding": vec, "doc_id": chunks[i + j]["doc_id"]})
+
+    # Ensure RAG directory exists
+    RAG_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Save docstore (original text chunks)
+    with open(DOCSTORE_FILE, "w", encoding="utf-8") as f:
+        json.dump(chunks, f, indent=2, ensure_ascii=False)
+
+    # Save embeddings
+    with open(EMBEDDINGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(embeddings, f, indent=2)
+
+    log(f"[build_embeddings] Wrote docstore ({DOCSTORE_FILE}) and embeddings ({EMBEDDINGS_FILE}), total chunks: {len(chunks)})")
+
 
 if __name__ == "__main__":
-    main()
+    build_embeddings()
