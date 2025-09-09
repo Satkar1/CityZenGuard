@@ -27,8 +27,10 @@ OUT_DIR = ROOT / "server" / "rag"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 HF_TOKEN = os.environ.get("HF_API_TOKEN")
-USER_MODEL = os.environ.get("HUGGINGFACE_EMBEDDING_MODEL", "sentence-transformers/paraphrase-MiniLM-L3-v2")
-FALLBACK_MODEL = "sentence-transformers/paraphrase-mpnet-base-v2"
+# Use models available on free HF API
+USER_MODEL = os.environ.get("HUGGINGFACE_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+FALLBACK_MODEL = "sentence-transformers/paraphrase-MiniLM-L3-v2"
+
 
 
 if not HF_TOKEN:
