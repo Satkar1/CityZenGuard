@@ -12,7 +12,7 @@ import requests
 from pathlib import Path
 
 # === Configuration ===
-DOCS_DIR = Path("server/rag/docs")
+DOCS_DIR = Path("data/legal")
 RAG_DIR = Path("server/rag")
 DOCSTORE_FILE = RAG_DIR / "docstore.json"
 EMBEDDINGS_FILE = RAG_DIR / "embeddings.json"
