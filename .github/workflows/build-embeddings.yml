@@ -25,12 +25,12 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests
+          pip install requests PyPDF2 python-docx
 
       - name: Run build script
         env:
           HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
-          HUGGINGFACE_EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+          HUGGINGFACE_EMBEDDING_MODEL: BAAI/bge-base-en-v1.5
         run: python scripts/rag/build_embeddings_hf.py
 
       - name: Commit and push generated files
