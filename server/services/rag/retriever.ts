@@ -1,18 +1,15 @@
+// server/services/rag/retriever.ts
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
-// Polyfill __dirname for ESM builds
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const HF_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
 const HF_EMBED_MODEL =
   process.env.HUGGINGFACE_EMBEDDING_MODEL ||
   "sentence-transformers/all-MiniLM-L6-v2";
 
-// ✅ Ensure paths resolve inside server/rag
-const RAG_DIR = path.join(__dirname, "..", "..", "rag");
+// ✅ Resolve relative to project root, not __dirname
+// On Render, process.cwd() = /opt/render/project/src
+const RAG_DIR = path.join(process.cwd(), "server", "rag");
 
 type DocItem = {
   id: number;
@@ -55,7 +52,7 @@ function loadIndex() {
 
 loadIndex();
 
-// simple cosine similarity helper
+// ---------------- cosine helper ----------------
 function cosine(a: number[], b: number[]) {
   try {
     let dot = 0;
@@ -73,6 +70,7 @@ function cosine(a: number[], b: number[]) {
   }
 }
 
+// ---------------- HuggingFace query embedding ----------------
 async function getQueryEmbedding(queryText: string): Promise<number[] | null> {
   try {
     if (!HF_TOKEN) {
@@ -112,6 +110,7 @@ async function getQueryEmbedding(queryText: string): Promise<number[] | null> {
   }
 }
 
+// ---------------- Main retrieval ----------------
 export async function retrieveRelevantDocs(queryText: string, topK = 3) {
   if (!embeddings || embeddings.length === 0 || Object.keys(docstore).length === 0) {
     console.warn("[RAG] Empty index, returning empty results");
