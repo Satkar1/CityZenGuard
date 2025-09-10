@@ -1,14 +1,9 @@
 // server/services/rag/retriever.ts
 import fs from "fs";
 import path from "path";
-
-const HF_TOKEN = process.env.HUGGINGFACE_API_TOKEN;
-const HF_EMBED_MODEL =
-  process.env.HUGGINGFACE_EMBEDDING_MODEL ||
-  "sentence-transformers/all-MiniLM-L6-v2";
+import { pipeline } from "@xenova/transformers"; // ✅ local HF models in JS
 
 // ✅ Resolve relative to project root
-// On Render, process.cwd() = /opt/render/project/src
 const RAG_DIR = path.join(process.cwd(), "server", "rag");
 
 type DocItem = {
@@ -30,9 +25,7 @@ function loadIndex() {
     if (fs.existsSync(docstorePath)) {
       const raw = fs.readFileSync(docstorePath, "utf-8");
       docstore = JSON.parse(raw);
-      console.log(
-        `[RAG] Loaded docstore (${Object.keys(docstore).length} docs) from ${docstorePath}`
-      );
+      console.log(`[RAG] Loaded docstore (${Object.keys(docstore).length} docs)`);
     } else {
       console.warn(`[RAG] docstore.json not found at ${docstorePath}`);
     }
@@ -40,9 +33,7 @@ function loadIndex() {
     if (fs.existsSync(embeddingsPath)) {
       const rawEmb = fs.readFileSync(embeddingsPath, "utf-8");
       embeddings = JSON.parse(rawEmb);
-      console.log(
-        `[RAG] Loaded embeddings (${embeddings.length} vectors) from ${embeddingsPath}`
-      );
+      console.log(`[RAG] Loaded embeddings (${embeddings.length} vectors)`);
     } else {
       console.warn(`[RAG] embeddings.json not found at ${embeddingsPath}`);
     }
@@ -55,63 +46,26 @@ loadIndex();
 
 // ---------------- Cosine Similarity ----------------
 function cosine(a: number[], b: number[]) {
-  try {
-    let dot = 0;
-    let na = 0;
-    let nb = 0;
-    for (let i = 0; i < a.length && i < b.length; i++) {
-      dot += a[i] * b[i];
-      na += a[i] * a[i];
-      nb += b[i] * b[i];
-    }
-    if (na === 0 || nb === 0) return 0;
-    return dot / (Math.sqrt(na) * Math.sqrt(nb));
-  } catch {
-    return 0;
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length && i < b.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
   }
+  if (na === 0 || nb === 0) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-// ---------------- HuggingFace Query Embedding ----------------
-async function getQueryEmbedding(queryText: string): Promise<number[] | null> {
-  try {
-    if (!HF_TOKEN) {
-      console.warn("[RAG] No HF token configured; cannot call HF embeddings");
-      return null;
-    }
+// ---------------- Local Query Embedding ----------------
+let embedder: any = null;
 
-    const model = HF_EMBED_MODEL;
-    // ✅ Force feature-extraction pipeline (for embeddings)
-    const url = `https://api-inference.huggingface.co/pipeline/feature-extraction/${model}`;
-
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${HF_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ inputs: queryText }),
-    });
-
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      console.warn(`[RAG] HF embedding failed (status ${res.status}): ${txt}`);
-      return null;
-    }
-
-    const out = await res.json();
-
-    // HF feature-extraction returns: [[vector]] or [vector]
-    if (Array.isArray(out) && Array.isArray(out[0])) {
-      return out[0] as number[];
-    }
-    if (Array.isArray(out) && typeof out[0] === "number") {
-      return out as number[];
-    }
-    return null;
-  } catch (err) {
-    console.warn("[RAG] getQueryEmbedding error:", err);
-    return null;
+async function getQueryEmbedding(queryText: string): Promise<number[]> {
+  if (!embedder) {
+    console.log("[RAG] Loading local embedder BAAI/bge-base-en-v1.5...");
+    embedder = await pipeline("feature-extraction", "BAAI/bge-base-en-v1.5");
   }
+  const out = await embedder(queryText, { pooling: "mean", normalize: true });
+  return Array.from(out.data);
 }
 
 // ---------------- Main Retrieval ----------------
@@ -121,59 +75,37 @@ export async function retrieveRelevantDocs(queryText: string, topK = 3) {
     return [];
   }
 
-  const qEmb = await getQueryEmbedding(queryText);
+  let qEmb: number[];
+  try {
+    qEmb = await getQueryEmbedding(queryText);
+  } catch (err) {
+    console.warn("[RAG] Local embeddings failed, fallback to keyword search:", err);
+    qEmb = [];
+  }
 
-  if (!qEmb) {
-    console.warn("[RAG] HF embeddings failed for query; using keyword fallback");
+  if (!qEmb || qEmb.length === 0) {
     const qwords = new Set(queryText.toLowerCase().match(/\w+/g) || []);
-    const results: Array<{
-      id: number;
-      score: number;
-      title: string;
-      text: string;
-      source?: string;
-    }> = [];
-
+    const results: Array<{ id: number; score: number; title: string; text: string; source?: string }> = [];
     for (const key of Object.keys(docstore)) {
       const doc = docstore[key];
       const dwords = new Set((doc.text || "").toLowerCase().match(/\w+/g) || []);
       const inter = [...qwords].filter((x) => dwords.has(x)).length;
       const union = new Set([...qwords, ...dwords]).size || 1;
       const score = inter / union;
-      results.push({
-        id: parseInt(key, 10),
-        score,
-        title: doc.title,
-        text: doc.text.slice(0, 800),
-        source: doc.source,
-      });
+      results.push({ id: parseInt(key, 10), score, title: doc.title, text: doc.text.slice(0, 800), source: doc.source });
     }
-
     results.sort((a, b) => b.score - a.score);
     return results.slice(0, topK);
   }
 
-  const scored: Array<{
-    id: number;
-    score: number;
-    title: string;
-    text: string;
-    source?: string;
-  }> = [];
-
+  const scored: Array<{ id: number; score: number; title: string; text: string; source?: string }> = [];
   for (let i = 0; i < embeddings.length && i < Object.keys(docstore).length; i++) {
     const emb = embeddings[i];
     if (!emb) continue;
     const score = cosine(qEmb, emb as number[]);
     const doc = docstore[String(i)];
     if (doc) {
-      scored.push({
-        id: i,
-        score,
-        title: doc.title,
-        text: doc.text.slice(0, 800),
-        source: doc.source,
-      });
+      scored.push({ id: i, score, title: doc.title, text: doc.text.slice(0, 800), source: doc.source });
     }
   }
 
