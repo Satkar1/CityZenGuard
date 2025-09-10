@@ -7,7 +7,7 @@ const HF_EMBED_MODEL =
   process.env.HUGGINGFACE_EMBEDDING_MODEL ||
   "sentence-transformers/all-MiniLM-L6-v2";
 
-// ✅ Resolve relative to project root, not __dirname
+// ✅ Resolve relative to project root
 // On Render, process.cwd() = /opt/render/project/src
 const RAG_DIR = path.join(process.cwd(), "server", "rag");
 
@@ -21,6 +21,7 @@ type DocItem = {
 let docstore: Record<string, DocItem> = {};
 let embeddings: number[][] = [];
 
+// ---------------- Load Index ----------------
 function loadIndex() {
   try {
     const docstorePath = path.join(RAG_DIR, "docstore.json");
@@ -52,7 +53,7 @@ function loadIndex() {
 
 loadIndex();
 
-// ---------------- cosine helper ----------------
+// ---------------- Cosine Similarity ----------------
 function cosine(a: number[], b: number[]) {
   try {
     let dot = 0;
@@ -70,7 +71,7 @@ function cosine(a: number[], b: number[]) {
   }
 }
 
-// ---------------- HuggingFace query embedding ----------------
+// ---------------- HuggingFace Query Embedding ----------------
 async function getQueryEmbedding(queryText: string): Promise<number[] | null> {
   try {
     if (!HF_TOKEN) {
@@ -79,7 +80,8 @@ async function getQueryEmbedding(queryText: string): Promise<number[] | null> {
     }
 
     const model = HF_EMBED_MODEL;
-    const url = `https://api-inference.huggingface.co/models/${model}`;
+    // ✅ Force feature-extraction pipeline (for embeddings)
+    const url = `https://api-inference.huggingface.co/pipeline/feature-extraction/${model}`;
 
     const res = await fetch(url, {
       method: "POST",
@@ -97,6 +99,8 @@ async function getQueryEmbedding(queryText: string): Promise<number[] | null> {
     }
 
     const out = await res.json();
+
+    // HF feature-extraction returns: [[vector]] or [vector]
     if (Array.isArray(out) && Array.isArray(out[0])) {
       return out[0] as number[];
     }
@@ -110,7 +114,7 @@ async function getQueryEmbedding(queryText: string): Promise<number[] | null> {
   }
 }
 
-// ---------------- Main retrieval ----------------
+// ---------------- Main Retrieval ----------------
 export async function retrieveRelevantDocs(queryText: string, topK = 3) {
   if (!embeddings || embeddings.length === 0 || Object.keys(docstore).length === 0) {
     console.warn("[RAG] Empty index, returning empty results");
