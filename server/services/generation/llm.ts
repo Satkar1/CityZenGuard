@@ -1,24 +1,21 @@
 // server/services/generation/llm.ts
 import { pipeline } from "@xenova/transformers";
 
-// ✅ Lazy-loaded local model pipeline
 let generator: any = null;
 const LOCAL_GEN_MODEL =
-  process.env.HUGGINGFACE_GENERATION_MODEL || "google/flan-t5-small";
+  process.env.HUGGINGFACE_GENERATION_MODEL || "Xenova/flan-t5-small";
 
-// ---------------- Prompt Builder ----------------
 function buildPrompt(
   question: string,
   contexts: Array<{ title: string; text: string }>
 ) {
-  const system = `You are a helpful legal assistant for Indian citizens. Use the provided context extracts (legal code, procedures, FAQs) to answer the question concisely and accurately. If the answer is uncertain, advise consulting a qualified lawyer.`;
+  const system = `You are a helpful legal assistant for Indian citizens. Use the provided context extracts (legal code, procedures, FAQs) to answer concisely and accurately. If the answer is uncertain, advise consulting a qualified lawyer.`;
   const ctxText = contexts
     .map((c, i) => `Context ${i + 1} - ${c.title}:\n${c.text}`)
     .join("\n\n---\n\n");
   return `${system}\n\n${ctxText}\n\nQuestion: ${question}\n\nAnswer:`;
 }
 
-// ---------------- Local Text Generation ----------------
 export async function generateAnswer(
   question: string,
   contexts: Array<{ title: string; text: string }>,
@@ -38,7 +35,6 @@ export async function generateAnswer(
       return_full_text: false,
     });
 
-    // `out` is usually [{ generated_text }]
     if (Array.isArray(out) && out[0]?.generated_text) {
       return out[0].generated_text.trim();
     }
@@ -49,4 +45,3 @@ export async function generateAnswer(
     throw err;
   }
 }
-
