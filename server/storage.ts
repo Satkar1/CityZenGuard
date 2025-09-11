@@ -1,3 +1,4 @@
+// server/storage.ts
 import { drizzle } from "drizzle-orm/node-postgres";
 import pkg from "pg";
 const { Pool } = pkg;
@@ -13,9 +14,27 @@ import {
 import { randomUUID } from "crypto";
 
 // ✅ Supabase-compatible Postgres client
+// Added better SSL handling + connection timeout
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: { rejectUnauthorized: false }, // fix self-signed cert error
+  connectionTimeoutMillis: 5000, // avoid long hangs
+});
+
+pool.on("error", (err) => {
+  console.error("[DB] Unexpected error on idle client:", err);
+});
+
+// ✅ Graceful shutdown (important for Render)
+process.on("SIGINT", async () => {
+  console.log("[DB] Shutting down pool...");
+  await pool.end();
+  process.exit(0);
+});
+process.on("SIGTERM", async () => {
+  console.log("[DB] Shutting down pool...");
+  await pool.end();
+  process.exit(0);
 });
 
 const db = drizzle(pool);
