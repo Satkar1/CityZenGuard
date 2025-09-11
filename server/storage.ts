@@ -14,25 +14,29 @@ import {
 import { randomUUID } from "crypto";
 
 // ✅ Supabase-compatible Postgres client
-// Added better SSL handling + connection timeout
+// Improved pool config to prevent idle disconnects
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // fix self-signed cert error
+  ssl: { rejectUnauthorized: false }, // handle Supabase SSL
+  max: 5, // limit connections (Supabase free tier ~20 max)
+  idleTimeoutMillis: 30000, // close idle clients after 30s
   connectionTimeoutMillis: 5000, // avoid long hangs
+  keepAlive: true, // keep connection alive
 });
 
+// ✅ Catch idle client errors
 pool.on("error", (err) => {
   console.error("[DB] Unexpected error on idle client:", err);
 });
 
-// ✅ Graceful shutdown (important for Render)
+// ✅ Graceful shutdown for Render/Vercel
 process.on("SIGINT", async () => {
-  console.log("[DB] Shutting down pool...");
+  console.log("[DB] Shutting down pool (SIGINT)...");
   await pool.end();
   process.exit(0);
 });
 process.on("SIGTERM", async () => {
-  console.log("[DB] Shutting down pool...");
+  console.log("[DB] Shutting down pool (SIGTERM)...");
   await pool.end();
   process.exit(0);
 });
