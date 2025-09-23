@@ -20,7 +20,8 @@ COPY tailwind.config.ts ./
 COPY postcss.config.js ./
 
 # Install Node.js dependencies
-RUN npm ci
+RUN npm install --legacy-peer-deps
+
 
 # Copy source code
 COPY . .
